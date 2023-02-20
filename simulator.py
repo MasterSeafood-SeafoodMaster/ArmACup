@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from math import pi, cos, sin, asin, acos, atan2, inf, sqrt, ceil, floor
 import matplotlib
 
-#import Cuplib as Cup
+import Cuplib as Cup
 matplotlib.use("TkAgg")  # Mac requires matplotlib to explicitly use tkinter
 
 half_pi = pi / 2
@@ -352,6 +352,7 @@ class Simulator:
 
 class GUI():
     def __init__(self, arm, connected=False, cupList=[]):
+        Cup.Setpause(cupList)
         self.connected = connected
         self.cupList=cupList
         self.arm = arm
@@ -418,8 +419,8 @@ class GUI():
             self.int_vars[3 + i].set(self.arm.position[i])
             if self.connected:
                 for i in range(len(self.cupList)):
-                    Cup.Move(self.cupList[i], self.LastCup[i], int(self.arm.position[i]), 0.05)
-                    self.LastC[i] = int(self.arm.position[i])
+                    Cup.tMove(self.cupList[i], self.LastCup[i], int(self.arm.position[i]), 0.01)
+                    self.LastCup[i] = int(self.arm.position[i])
 
     def update_xyz_scale(self):
         self.int_vars[0].set(self.arm.x)

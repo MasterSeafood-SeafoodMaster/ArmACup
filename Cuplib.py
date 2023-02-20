@@ -19,7 +19,7 @@ def move(index, From, To, sleep):
             kit.servo[index].angle = i
             #print(i)
             time.sleep(sleep)
-    time.sleep(0.5)
+    time.sleep(0.01)
 
 
 def tMove(index, From, To, sleep):
