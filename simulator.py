@@ -6,6 +6,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from math import pi, cos, sin, asin, acos, atan2, inf, sqrt, ceil, floor
 import matplotlib
+
+#import Cuplib as Cup
 matplotlib.use("TkAgg")  # Mac requires matplotlib to explicitly use tkinter
 
 half_pi = pi / 2
@@ -295,31 +297,6 @@ class Arm:
     def close_claws(self):
         self.position[5] = 79
 
-    def write(self, sr):
-        sr.write(self.position.astype("int32"))  # my servos require int degrees
-
-    def pickup(self, sr, target_x, target_y, target_z, claw_rot, smooth=True, steps=40, high=80):
-        self.open_claws()
-        self.set_claws_rotation(claw_rot)
-        self.goto_and_write(sr, target_x, target_y, target_z + high, smooth=smooth, steps=steps)
-        self.goto_and_write(sr, target_x, target_y, target_z, smooth=smooth, steps=8)
-        time.sleep(0.75)
-        self.close_claws()
-        self.goto_and_write(sr, target_x, target_y, target_z + high, smooth=smooth, steps=8)
-
-    def goto_and_write(self, sr, target_x, target_y, target_z, smooth=True, steps=40):
-        if smooth:
-            x_step, y_step, z_step = (target_x - self.x) / steps, (target_y - self.y) / steps, (
-                target_z - self.z) / steps
-            for x, y, z in zip(np.arange(self.x, target_x, x_step),
-                               np.arange(self.y, target_y, y_step),
-                               np.arange(self.z, target_z, z_step)):
-                time.sleep(0.05)
-                self.goto(x, y, z)
-                self.write(sr)
-        else:
-            self.goto(target_x, target_y, target_z)
-            self.write(sr)
 
 # from https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
 
@@ -335,7 +312,7 @@ class Simulator:
         self.ax = ax
         self.update()
 
-    def update(self, xmin=-100, xmax=100, ymin=0, ymax=200, zmin=-50, zmax=100):
+    def update(self, xmin=-50, xmax=100, ymin=-50, ymax=100, zmin=-50, zmax=200):
         _points = self.arm.get_coordinates()
         points = _points.T[1:]
         last_line = points[2] - points[1]
@@ -373,99 +350,92 @@ class Simulator:
         self.ax.plot(claw_points[0], claw_points[1], claw_points[2],
                      linewidth=2.5, marker='*', markersize=8, markerfacecolor='y', c="g")
 
+class GUI():
+    def __init__(self, arm, connected=False, cupList=[]):
+        self.connected = connected
+        self.cupList=cupList
+        self.arm = arm
+        self.LastCup = [90, 90, 90, 90, 90, 90]
+        plt.ion()
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(projection='3d')
+        self.simulator = Simulator(self.arm, self.ax)
+        self.xmin = -50
+        self.xmax = 200
+        self.ymin = -50
+        self.ymax = 200
+        self.zmin = -50
+        self.zmax = 200
+        self.root = Tk()
+        self.root.title('Robotic Arm Control Simulation')
+        self.root.configure(background='white')
+        self.int_vars = [IntVar(self.root) for i in range(9)]
+        self.texts = ["x (mm): ", "y (mm): ", "z (mm): ", "0 (deg): ", "1 (deg): ",
+                      "2 (deg): ", "3 (deg): ", "claw (deg): ", "open (deg): "]
+        for i, txt in enumerate(self.texts):
+            self.label = Label(self.root, text=txt, font=("Courier", 14))
+            self.label.configure(background="white")
+            self.label.grid(row=i)
 
-if __name__ == "__main__":
-    write_serial = False
-    if write_serial:
-        from protocol import ServoProtocol
+        self.sx = Scale(self.root, from_=self.xmin, to_=self.xmax, orient=HORIZONTAL,
+                   length=600, command=lambda t: self.update(0, t), variable=self.int_vars[0])
+        self.sy = Scale(self.root, from_=self.ymin, to_=self.ymax, orient=HORIZONTAL,
+                   length=600, command=lambda t: self.update(1, t), variable=self.int_vars[1])
+        self.sz = Scale(self.root, from_=self.zmin, to_=self.zmax, orient=HORIZONTAL,
+                   length=600, command=lambda t: self.update(2, t), variable=self.int_vars[2])
+        
+        self.servos = []
+        for i in range(6):
+            self.servo = (
+                lambda i:
+                Scale(self.root, from_=0, to_=180, orient=HORIZONTAL, length=600,
+                      command=lambda t: self.update(3 + i, t),    variable=self.int_vars[3 + i])
+            )(i)  # closure
+            self.servo.configure(background="white")
+            self.servos.append(self.servo)
+            self.servo.set(self.arm.position[i])
+            self.servo.grid(row=3 + i, column=1)
 
-        sr = ServoProtocol('COM3')
-
-    xmin = -50
-    xmax = 200
-    ymin = -50
-    ymax = 200
-    zmin = -50
-    zmax = 200
-
-    def update(n, t):
+    def update(self, n, t):
         if n == 0:
-            arm.goto(x=int_vars[0].get())
-            update_servo_scale()
+            self.arm.goto(x=self.int_vars[0].get())
+            self.update_servo_scale()
         elif n == 1:
-            arm.goto(y=int_vars[1].get())
-            update_servo_scale()
+            self.arm.goto(y=self.int_vars[1].get())
+            self.update_servo_scale()
         elif n == 2:
-            arm.goto(z=int_vars[2].get())
-            update_servo_scale()
+            self.arm.goto(z=self.int_vars[2].get())
+            self.update_servo_scale()
         elif 3 <= n < 9:
-            arm.set_position(n - 3, int_vars[n].get())
-            if n < 7:  # 7 and 8 are the claws, no need to update
-                update_xyz_scale()
+            self.arm.set_position(n - 3, self.int_vars[n].get())
+            if n < 7:  # 7 and 8 are the claws, no need to self.update
+                self.update_xyz_scale()
 
-        simulator.update(xmin, xmax, ymin, ymax, zmin, zmax)
+        self.simulator.update(self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax)
 
-        if write_serial:
-            arm.write(sr)
+    def update_servo_scale(self):
+        for i, servo in enumerate(self.servos):
+            self.int_vars[3 + i].set(self.arm.position[i])
+            if self.connected:
+                for i in range(len(self.cupList)):
+                    Cup.Move(self.cupList[i], self.LastCup[i], int(self.arm.position[i]), 0.05)
+                    self.LastC[i] = int(self.arm.position[i])
 
-    def update_servo_scale():
-        for i, servo in enumerate(servos):
-            int_vars[3 + i].set(arm.position[i])
+    def update_xyz_scale(self):
+        self.int_vars[0].set(self.arm.x)
+        self.int_vars[1].set(self.arm.y)
+        self.int_vars[2].set(self.arm.z)
 
-    def update_xyz_scale():
-        int_vars[0].set(arm.x)
-        int_vars[1].set(arm.y)
-        int_vars[2].set(arm.z)
+    def openGUI(self):
+        self.sx.set(100)
+        self.sy.set(100)
+        self.sz.set(100)
+        self.sx.configure(background="white")
+        self.sy.configure(background="white")
+        self.sz.configure(background="white")
+        self.sx.grid(row=0, column=1)
+        self.sy.grid(row=1, column=1)
+        self.sz.grid(row=2, column=1)
 
-    plt.ion()
-    ax = Axes3D(plt.figure())
-
-    impl = "t"  # input("Enter tt, ax or t: \n")
-    arm = Arm(93, 87, 110, 20, opt=Arm.minimum_change, implementation=impl)
-    simulator = Simulator(arm, ax)
-
-    root = Tk()
-    root.title('Robotic Arm Control Simulation')
-    root.configure(background='white')
-
-    int_vars = [IntVar(root) for i in range(9)]
-    texts = ["x (mm): ", "y (mm): ", "z (mm): ", "0 (deg): ", "1 (deg): ",
-             "2 (deg): ", "3 (deg): ", "claw (deg): ", "open (deg): "]
-    for i, txt in enumerate(texts):
-        label = Label(root, text=txt, font=("Courier", 14))
-        label.configure(background="white")
-        label.grid(row=i)
-
-    # scale for the x, y and z
-    sx = Scale(root, from_=xmin, to_=xmax, orient=HORIZONTAL,
-               length=600, command=lambda t: update(0, t), variable=int_vars[0])
-    sy = Scale(root, from_=ymin, to_=ymax, orient=HORIZONTAL,
-               length=600, command=lambda t: update(1, t), variable=int_vars[1])
-    sz = Scale(root, from_=zmin, to_=zmax, orient=HORIZONTAL,
-               length=600, command=lambda t: update(2, t), variable=int_vars[2])
-
-    # scales for 6 servos
-    servos = []
-    for i in range(6):
-        servo = (
-            lambda i:
-            Scale(root, from_=0, to_=180, orient=HORIZONTAL, length=600,
-                  command=lambda t: update(3 + i, t),    variable=int_vars[3 + i])
-        )(i)  # closure
-        servo.configure(background="white")
-        servos.append(servo)
-        servo.set(arm.position[i])
-        servo.grid(row=3 + i, column=1)
-
-    sx.set(100)
-    sy.set(100)
-    sz.set(100)
-    sx.configure(background="white")
-    sy.configure(background="white")
-    sz.configure(background="white")
-    sx.grid(row=0, column=1)
-    sy.grid(row=1, column=1)
-    sz.grid(row=2, column=1)
-
-    plt.show()
-    root.mainloop()
+        plt.show()
+        self.root.mainloop()
