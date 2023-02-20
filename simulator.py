@@ -360,12 +360,12 @@ class GUI():
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(projection='3d')
         self.simulator = Simulator(self.arm, self.ax)
-        self.xmin = -50
-        self.xmax = 200
-        self.ymin = -50
-        self.ymax = 200
-        self.zmin = -50
-        self.zmax = 200
+        self.xmin = -150
+        self.xmax = 150
+        self.ymin = -150
+        self.ymax = 150
+        self.zmin = 0
+        self.zmax = 150
         self.root = Tk()
         self.root.title('Robotic Arm Control Simulation')
         self.root.configure(background='white')
