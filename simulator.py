@@ -417,10 +417,10 @@ class GUI():
     def update_servo_scale(self):
         for i, servo in enumerate(self.servos):
             self.int_vars[3 + i].set(self.arm.position[i])
-            if self.connected:
-                for i in range(len(self.cupList)):
-                    Cup.tMove(self.cupList[i], self.LastCup[i], int(self.arm.position[i]), 0.01)
-                    self.LastCup[i] = int(self.arm.position[i])
+            #if self.connected:
+                #for i in range(len(self.cupList)):
+                    #Cup.tMove(self.cupList[i], self.LastCup[i], int(self.arm.position[i]), 0.01)
+                    #self.LastCup[i] = int(self.arm.position[i])
 
     def update_xyz_scale(self):
         self.int_vars[0].set(self.arm.x)
