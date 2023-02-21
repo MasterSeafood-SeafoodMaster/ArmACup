@@ -14,6 +14,7 @@ def ArmInit(channelList):
 def setZero(channelList):
     print("set zero")
     for ch in channelList:
+        if kit.servo[ch].angle>180 or kit.servo[ch].angle<0: kit.servo[ch].angle=90
         t = trd.Thread(target=move, args=[ch, kit.servo[ch].angle, 90, 2000])  
         t.start()
     time.sleep(2.5)
@@ -30,6 +31,7 @@ def move(index, From, To, step):
 def tMove(cList, tList, step):
     for cidx in range(len(cList)):
         La = int(kit.servo[cList[cidx]].angle)
+        #print(cidx, La)
         t = trd.Thread(target=move, args=[cList[cidx], La, tList[cidx], step])
         t.start()
     time.sleep(step*0.001)
