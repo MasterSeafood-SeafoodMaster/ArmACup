@@ -4,6 +4,15 @@
 - rosdep install -i --from-path src --rosdistro foxy -y
 - colcon build
 - . install/setup.bash
+- 
+### Debug Useful Information
+
+https://github.com/NVIDIA/jetson-gpio/blob/master/README.md
+
+[ERROR] ROS2 libconsole_bridge.so.1.0 or other share object file(RViz2) could not find -> Find path and add to $LD_LIBRARY_PATH
+https://stackoverflow.com/questions/480764/linux-error-while-loading-shared-libraries-cannot-open-shared-object-file-no-s
+
+colcon build --packages-select my_package
 
 ### Source ROS 2 environment
 - source /opt/ros/foxy/setup.bash
